@@ -1,0 +1,49 @@
+name: Generate Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "画像生成プロンプト(英語推奨)"
+        required: true
+        default: >-
+          A photorealistic photo of a small robot action figure floating
+          in outer space, stars and nebula in the background, cinematic
+          lighting, high detail
+      output_path:
+        description: "出力先パス(リポジトリからの相対パス)"
+        required: true
+        default: "assets/images/figure.png"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    environment: Gemini_API   # ← Settings > Environments に登録済みの環境名。GEMINI_API_KEY シークレットをここから読み込みます
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install google-genai
+
+      - name: Ensure output directory exists
+        run: mkdir -p "$(dirname '${{ inputs.output_path }}')"
+
+      - name: Generate image
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python generate_image.py "${{ inputs.prompt }}" "${{ inputs.output_path }}"
+
+      - name: Commit and push generated image
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: generate image via Gemini (${{ inputs.output_path }})"
+          file_pattern: ${{ inputs.output_path }}
